@@ -28,6 +28,8 @@
 #include "smb-lib.h"
 #include "storm-watch.h"
 #include <linux/pmic-voter.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 
 #define SMB2_DEFAULT_WPWR_UW	8000000
 
@@ -169,6 +171,7 @@ struct smb_dt_props {
 	bool	no_battery;
 	bool	hvdcp_disable;
 	bool	auto_recharge_soc;
+	int     slave_shdn;
 	int	wd_bark_time;
 	bool	no_pd;
 };
@@ -346,6 +349,9 @@ static int smb2_parse_dt(struct smb2 *chip)
 
 	chg->ufp_only_mode = of_property_read_bool(node,
 					"qcom,ufp-only-mode");
+
+	chip->dt.slave_shdn = of_get_named_gpio(node, "slave-shdn", 0);
+	gpio_request(chip->dt.slave_shdn, "smb2_slave_shutdown_gpio");
 
 	return 0;
 }
@@ -1002,6 +1008,7 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
+	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_SW_JEITA_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_DONE,
@@ -1071,6 +1078,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 		rc = smblib_get_prop_input_current_limited(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
+		val->intval = !get_effective_result(chg->chg_disable_votable);
 		break;
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 		val->intval = chg->step_chg_enabled;
@@ -1205,6 +1215,9 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 			vote(chg->fcc_votable, QNOVO_VOTER, true, val->intval);
 			vote(chg->fcc_votable, BATT_PROFILE_VOTER, false, 0);
 		}
+		break;
+	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
+		vote(chg->chg_disable_votable, USER_VOTER, !val->intval, 0);
 		break;
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 		chg->step_chg_enabled = !!val->intval;
@@ -2445,6 +2458,9 @@ static int smb2_probe(struct platform_device *pdev)
 	/* set driver data before resources request it */
 	platform_set_drvdata(pdev, chip);
 
+	/* wakeup init should be done at the beginning of smb2_probe */
+	device_init_wakeup(chg->dev, true);
+
 	rc = smb2_init_vbus_regulator(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize vbus regulator rc=%d\n",
@@ -2560,8 +2576,6 @@ static int smb2_probe(struct platform_device *pdev)
 	}
 	batt_charge_type = val.intval;
 
-	device_init_wakeup(chg->dev, true);
-
 	pr_info("QPNP SMB2 probed successfully usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,
 		batt_present, batt_health, batt_charge_type);
@@ -2626,6 +2640,10 @@ static void smb2_shutdown(struct platform_device *pdev)
 	/* force enable APSD */
 	smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,
 				 AUTO_SRC_DETECT_BIT, AUTO_SRC_DETECT_BIT);
+
+	gpio_set_value(chip->dt.slave_shdn, 0);
+	pr_err("slave charger shdn is %d\n",
+		gpio_get_value(chip->dt.slave_shdn));
 }
 
 static const struct of_device_id match_table[] = {

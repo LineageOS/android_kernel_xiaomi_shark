@@ -746,8 +746,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&gpio9_dig_out_default>;
 	slave-shdn = <&pm8998_gpios 9 GPIO_ACTIVE_HIGH>;
-
-	shark,board-is-dvt2 = <0>;
 };
 
 &pmi8998_fg {
@@ -764,7 +762,6 @@
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 
 	qcom,fg-jeita-thresholds = <0 15 45 55>;
-	qcom,fg-aging-jeita-thresholds = <(-20) 15 45 68>;
 	qcom,fg-jeita-hyst-temp  = <2>;
 	qcom,fg-batt-temp-delta  = <6>;
 

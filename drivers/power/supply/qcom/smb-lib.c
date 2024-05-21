@@ -968,7 +968,7 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 			goto enable_icl_changed_interrupt;
 		}
 	} else {
-		set_sdp_current(chg, 100000);
+		set_sdp_current(chg, 500000);
 		rc = smblib_set_charge_param(chg, &chg->param.usb_icl, icl_ua);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't set HC ICL rc=%d\n", rc);
@@ -2758,7 +2758,7 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
-#define DCP_CURRENT_UA			1500000
+#define DCP_CURRENT_UA			1800000
 #define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
@@ -2802,6 +2802,9 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 					int usb_current)
 {
 	int rc = 0, rp_ua, typec_mode;
+
+	if (usb_current == USBIN_100MA)
+		usb_current = USBIN_500MA;
 
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
 		if (usb_current == -ETIMEDOUT) {
