@@ -3758,6 +3758,7 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_codec *codec, bool active)
 {
 	int value = 0;
 	bool ret = 0;
+	int old_value;
 	struct snd_soc_card *card = codec->component.card;
 	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	struct pinctrl_state *en2_pinctrl_active;
@@ -3810,6 +3811,7 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_codec *codec, bool active)
 	}
 
 	/* if active and usbc_en2_gpio_p defined, swap using usbc_en2_gpio_p */
+	old_value = tavil_mb_pull_down(codec, true, 0);
 	if (active) {
 		dev_dbg(codec->dev, "%s: enter\n", __func__);
 		if (pdata->usbc_en2_gpio_p) {
@@ -3824,6 +3826,7 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_codec *codec, bool active)
 			value = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
 			gpio_set_value_cansleep(pdata->usbc_en2_gpio, !value);
 		}
+		tavil_mb_pull_down(codec, false, old_value);
 		pr_debug("%s: swap select switch %d to %d\n", __func__,
 			value, !value);
 		ret = true;
@@ -4089,6 +4092,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm, wcd_audio_paths,
 				ARRAY_SIZE(wcd_audio_paths));
 
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
 	snd_soc_dapm_ignore_suspend(dapm, "Handset Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "Headset Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "ANCRight Headset Mic");
