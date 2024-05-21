@@ -613,7 +613,6 @@ static int smb138x_get_prop_connector_health(struct smb138x *chip)
 	int rc, lb_mdegc, ub_mdegc, rst_mdegc, connector_mdegc;
 
 	return POWER_SUPPLY_HEALTH_GOOD;
-	
 	if (!chg->iio.connector_temp_chan ||
 		PTR_ERR(chg->iio.connector_temp_chan) == -EPROBE_DEFER)
 		chg->iio.connector_temp_chan = iio_channel_get(chg->dev,

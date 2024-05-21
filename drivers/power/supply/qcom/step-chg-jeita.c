@@ -31,8 +31,8 @@
 			&& (value) <= (right)))
 
 struct range_data {
-	int low_threshold;
- 	int high_threshold;
+	u32 low_threshold;
+	u32 high_threshold;
 	u32 value;
 };
 
@@ -40,7 +40,6 @@ struct step_chg_cfg {
 	u32			psy_prop;
 	char			*prop_name;
 	int			hysteresis;
-	int array_len;
 	struct range_data	fcc_cfg[MAX_STEP_CHG_ENTRIES];
 };
 
@@ -48,20 +47,14 @@ struct jeita_fcc_cfg {
 	u32			psy_prop;
 	char			*prop_name;
 	int			hysteresis;
-	int		array_len;
- 	int		aging_array_len;
 	struct range_data	fcc_cfg[MAX_STEP_CHG_ENTRIES];
-	struct range_data 	fcc_cfg_aging[MAX_STEP_CHG_ENTRIES];
 };
 
 struct jeita_fv_cfg {
 	u32			psy_prop;
 	char			*prop_name;
 	int			hysteresis;
-	int		array_len;
- 	int		aging_array_len;
 	struct range_data	fv_cfg[MAX_STEP_CHG_ENTRIES];
-	struct range_data	fv_cfg_aging[MAX_STEP_CHG_ENTRIES];
 };
 
 struct step_chg_info {
@@ -75,7 +68,6 @@ struct step_chg_info {
 	bool			sw_jeita_cfg_valid;
 	bool			soc_based_step_chg;
 	bool			batt_missing;
-	bool 			aging_running;
 	int			jeita_fcc_index;
 	int			jeita_fv_index;
 	int			step_index;
@@ -102,8 +94,7 @@ static struct step_chg_info *the_chip;
 
 #define STEP_CHG_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
 
-#define BATT_HOT_DECIDEGREE_MAX_AGING	700
-#define BATT_HOT_DECIDEGREE_MAX		600
+#define BATT_HOT_DECIDEGREE_MAX			600
 #define GET_CONFIG_DELAY_MS		2000
 #define GET_CONFIG_RETRY_COUNT		50
 #define WAIT_BATT_ID_READY_MS		200
@@ -143,7 +134,7 @@ static bool is_usb_available(struct step_chg_info *chip)
 
 static int read_range_data_from_node(struct device_node *node,
 		const char *prop_str, struct range_data *ranges,
-		u32 max_threshold, u32 max_value, int *array_len)
+		u32 max_threshold, u32 max_value)
 {
 	int rc = 0, i, length, per_tuple_length, tuples;
 
@@ -161,7 +152,6 @@ static int read_range_data_from_node(struct device_node *node,
 		return -EINVAL;
 	}
 	tuples = length / per_tuple_length;
-	*array_len = tuples;
 
 	if (tuples > MAX_STEP_CHG_ENTRIES) {
 		pr_err("too many entries(%d), only %d allowed\n",
@@ -216,7 +206,6 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	const char *batt_type_str;
 	const __be32 *handle;
 	int batt_id_ohms, rc;
-	int array_len = 0;
 	union power_supply_propval prop = {0, };
 
 	handle = of_get_property(chip->dev->of_node,
@@ -289,9 +278,7 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 			"qcom,step-chg-ranges",
 			chip->step_chg_config->fcc_cfg,
 			chip->soc_based_step_chg ? 100 : max_fv_uv,
-			max_fcc_ma * 1000,
- 			&array_len);
- 	chip->step_chg_config->array_len = array_len;
+			max_fcc_ma * 1000);
 	if (rc < 0) {
 		pr_debug("Read qcom,step-chg-ranges failed from battery profile, rc=%d\n",
 					rc);
@@ -302,9 +289,7 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	rc = read_range_data_from_node(profile_node,
 			"qcom,jeita-fcc-ranges",
 			chip->jeita_fcc_config->fcc_cfg,
-			BATT_HOT_DECIDEGREE_MAX, max_fcc_ma * 1000,
- 			&array_len);
- 	chip->jeita_fcc_config->array_len = array_len;
+			BATT_HOT_DECIDEGREE_MAX, max_fcc_ma * 1000);
 	if (rc < 0) {
 		pr_debug("Read qcom,jeita-fcc-ranges failed from battery profile, rc=%d\n",
 					rc);
@@ -314,38 +299,12 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	rc = read_range_data_from_node(profile_node,
 			"qcom,jeita-fv-ranges",
 			chip->jeita_fv_config->fv_cfg,
-			BATT_HOT_DECIDEGREE_MAX, max_fv_uv,
- 			&array_len);
- 	chip->jeita_fv_config->array_len = array_len;
+			BATT_HOT_DECIDEGREE_MAX, max_fv_uv);
 	if (rc < 0) {
 		pr_debug("Read qcom,jeita-fv-ranges failed from battery profile, rc=%d\n",
 					rc);
 		chip->sw_jeita_cfg_valid = false;
 	}
-
-	rc = read_range_data_from_node(profile_node,
- 			"qcom,jeita-fcc-ranges-aging",
- 			chip->jeita_fcc_config->fcc_cfg_aging,
- 			BATT_HOT_DECIDEGREE_MAX_AGING, max_fcc_ma * 1000,
- 			&array_len);
- 	chip->jeita_fcc_config->aging_array_len = array_len;
- 	if (rc < 0) {
- 		pr_debug("Read qcom,jeita-fcc-ranges-aging failed from battery profile, rc=%d\n",
- 					rc);
- 		chip->sw_jeita_cfg_valid = false;
- 	}
-
- 	rc = read_range_data_from_node(profile_node,
- 			"qcom,jeita-fv-ranges-aging",
- 			chip->jeita_fv_config->fv_cfg_aging,
- 			BATT_HOT_DECIDEGREE_MAX_AGING, max_fv_uv,
- 			&array_len);
- 	chip->jeita_fv_config->aging_array_len = array_len;
- 	if (rc < 0) {
- 		pr_debug("Read qcom,jeita-fv-ranges-aging failed from battery profile, rc=%d\n",
- 					rc);
- 		chip->sw_jeita_cfg_valid = false;
- 	}
 
 	return rc;
 }
@@ -387,16 +346,6 @@ static void get_config_work(struct work_struct *work)
 			chip->jeita_fv_config->fv_cfg[i].low_threshold,
 			chip->jeita_fv_config->fv_cfg[i].high_threshold,
 			chip->jeita_fv_config->fv_cfg[i].value);
-	for (i = 0; i < MAX_STEP_CHG_ENTRIES; i++)
- 		pr_debug("jeita-fcc-aging-cfg: %ddecidegree ~ %ddecidegre, %duA\n",
- 			chip->jeita_fcc_config->fcc_cfg_aging[i].low_threshold,
- 			chip->jeita_fcc_config->fcc_cfg_aging[i].high_threshold,
- 			chip->jeita_fcc_config->fcc_cfg_aging[i].value);
- 	for (i = 0; i < MAX_STEP_CHG_ENTRIES; i++)
- 		pr_debug("jeita-fv-aging-cfg: %ddecidegree ~ %ddecidegre, %duV\n",
- 			chip->jeita_fv_config->fv_cfg_aging[i].low_threshold,
- 			chip->jeita_fv_config->fv_cfg_aging[i].high_threshold,
- 			chip->jeita_fv_config->fv_cfg_aging[i].value);
 
 	return;
 
@@ -408,7 +357,7 @@ reschedule:
 
 static int get_val(struct range_data *range, int hysteresis, int current_index,
 		int threshold,
-		int *new_index, int *val, int array_len)
+		int *new_index, int *val)
 {
 	int i;
 
@@ -435,14 +384,6 @@ static int get_val(struct range_data *range, int hysteresis, int current_index,
 			break;
 		}
 	}
-
-	if (threshold <= range[0].low_threshold) {
- 		*new_index = 0;
- 		*val = range[*new_index].value;
- 	} else if (threshold >= range[array_len-1].high_threshold) {
- 		*new_index = array_len-1;
- 		*val = range[*new_index].value;
- 	}
 
 	/*
 	 * If nothing was found, the threshold exceeds the max range for sure
@@ -531,8 +472,7 @@ static int handle_step_chg_config(struct step_chg_info *chip)
 			chip->step_index,
 			pval.intval,
 			&chip->step_index,
-			&fcc_ua,
- 			chip->step_chg_config->array_len);
+			&fcc_ua);
 	if (rc < 0) {
 		/* remove the vote if no step-based fcc is found */
 		if (chip->fcc_votable)
@@ -557,10 +497,6 @@ update_time:
 reschedule:
 	/* reschedule 1000uS after the remaining time */
 	return (STEP_CHG_HYSTERISIS_DELAY_US - elapsed_us + 1000);
-}
-
-void qcom_step_chg_aging_mode(bool aging_running){
- 	the_chip->aging_running = aging_running;
 }
 
 #define JEITA_SUSPEND_HYST_UV		50000
@@ -599,17 +535,12 @@ static int handle_jeita(struct step_chg_info *chip)
 		return rc;
 	}
 
-	rc = get_val(chip->aging_running
-					? chip->jeita_fcc_config->fcc_cfg_aging
-					: chip->jeita_fcc_config->fcc_cfg,
+	rc = get_val(chip->jeita_fcc_config->fcc_cfg,
 			chip->jeita_fcc_config->hysteresis,
 			chip->jeita_fcc_index,
 			pval.intval,
 			&chip->jeita_fcc_index,
-			&fcc_ua,
- 			chip->aging_running
-				? chip->jeita_fcc_config->aging_array_len
-				: chip->jeita_fcc_config->array_len);
+			&fcc_ua);
 	if (rc < 0)
 		fcc_ua = 0;
 
@@ -619,17 +550,14 @@ static int handle_jeita(struct step_chg_info *chip)
 		/* changing FCC is a must */
 		return -EINVAL;
 
-	rc = get_val(chip->aging_running
-					? chip->jeita_fv_config->fv_cfg_aging
-					: chip->jeita_fv_config->fv_cfg,
- 			chip->jeita_fv_config->hysteresis,
- 			chip->jeita_fv_index,
- 			pval.intval,
- 			&chip->jeita_fv_index,
- 			&fv_uv,
- 			chip->aging_running
-				? chip->jeita_fv_config->aging_array_len
-				: chip->jeita_fv_config->array_len);
+	vote(chip->fcc_votable, JEITA_VOTER, fcc_ua ? true : false, fcc_ua);
+
+	rc = get_val(chip->jeita_fv_config->fv_cfg,
+			chip->jeita_fv_config->hysteresis,
+			chip->jeita_fv_index,
+			pval.intval,
+			&chip->jeita_fv_index,
+			&fv_uv);
 	if (rc < 0)
 		fv_uv = 0;
 
@@ -668,7 +596,6 @@ static int handle_jeita(struct step_chg_info *chip)
 	}
 
 set_jeita_fv:
-	vote(chip->fcc_votable, JEITA_VOTER, fcc_ua ? true : false, fcc_ua);
 	vote(chip->fv_votable, JEITA_VOTER, fv_uv ? true : false, fv_uv);
 
 update_time:
@@ -835,7 +762,6 @@ int qcom_step_chg_init(struct device *dev,
 	chip->step_index = -EINVAL;
 	chip->jeita_fcc_index = -EINVAL;
 	chip->jeita_fv_index = -EINVAL;
-	chip->aging_running = false;
 
 	chip->step_chg_config = devm_kzalloc(dev,
 			sizeof(struct step_chg_cfg), GFP_KERNEL);
@@ -873,10 +799,6 @@ int qcom_step_chg_init(struct device *dev,
 			msecs_to_jiffies(GET_CONFIG_DELAY_MS));
 
 	the_chip = chip;
-
-	pr_info("qcom_step_chg_init successfully "
-			"chip->step_chg_enable=%d chip->sw_jeita_enable=%d\n",
- 			chip->step_chg_enable, chip->sw_jeita_enable);
 
 	return 0;
 
