@@ -893,61 +893,6 @@ static int tas2559_echoref_ctl_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
-static int tas2559_mute_ctrl_get(struct snd_kcontrol *pKcontrol,
-	struct snd_ctl_elem_value *pValue)
-{
-#ifdef KCONTROL_CODEC
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
-	struct tas2559_priv *pTAS2559 = snd_soc_codec_get_drvdata(codec);
-
-	mutex_lock(&pTAS2559->codec_lock);
-
-	pValue->value.integer.value[0] = pTAS2559->mbMute;
-	dev_dbg(pTAS2559->dev, "tas2559_mute_ctrl_get = %d\n",
-		pTAS2559->mbMute);
-
-	mutex_unlock(&pTAS2559->codec_lock);
-	return 0;
-}
-
-static int tas2559_mute_ctrl_put(struct snd_kcontrol *pKcontrol,
-	struct snd_ctl_elem_value *pValue)
-{
-#ifdef KCONTROL_CODEC
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
-	struct tas2559_priv *pTAS2559 = snd_soc_codec_get_drvdata(codec);
-
-	int mbMute = pValue->value.integer.value[0];
-
-	mutex_lock(&pTAS2559->codec_lock);
-
-	dev_dbg(pTAS2559->dev, "tas2559_mute_ctrl_put = %d\n", mbMute);
-
-	pTAS2559->mbMute = !!mbMute;
-
-	mutex_unlock(&pTAS2559->codec_lock);
-	return 0;
-}
-
-static const char *const vendor_id_text[] = {"None", "AAC", "SSI", "GOER", "Unknown"};
-static const struct soc_enum vendor_id[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(vendor_id_text), vendor_id_text),
-};
-
-static int vendor_id_get(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	(void)kcontrol;
-	ucontrol->value.integer.value[0] = 1;
-	return 0;
-}
-
 static const struct snd_kcontrol_new tas2559_snd_controls[] = {
 	SOC_SINGLE_EXT("TAS2559 DAC Playback Volume", SND_SOC_NOPM, 0, 0x0f, 0,
 		tas2559_ldac_gain_get, tas2559_ldac_gain_put),
@@ -979,9 +924,6 @@ static const struct snd_kcontrol_new tas2559_snd_controls[] = {
 		tas2559_dev_a_mute_get, tas2559_dev_a_mute_put),
 	SOC_ENUM_EXT("TAS2560 Mute", dev_mute_enum[0],
 		tas2559_dev_b_mute_get, tas2559_dev_b_mute_put),
-	SOC_SINGLE_EXT("SmartPA Mute", SND_SOC_NOPM, 0, 0x0001, 0,
-			tas2559_mute_ctrl_get, tas2559_mute_ctrl_put),
-	SOC_ENUM_EXT("SPK ID", vendor_id, vendor_id_get, NULL),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2559 = {

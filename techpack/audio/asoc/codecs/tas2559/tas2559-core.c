@@ -491,12 +491,6 @@ int tas2559_DevMute(struct tas2559_priv *pTAS2559, enum channel dev, bool mute)
 	int nResult = 0;
 
 	dev_dbg(pTAS2559->dev, "%s, dev=%d, mute=%d\n", __func__, dev, mute);
-
-	if (pTAS2559->mbMute) {
-		dev_dbg(pTAS2559->dev, "%s, always mute \n", __func__);
-		return tas2559_dev_load_data(pTAS2559, dev, p_tas2559_mute_data);
-	}
-
 	if (mute)
 		nResult = tas2559_dev_load_data(pTAS2559, dev, p_tas2559_mute_data);
 	else

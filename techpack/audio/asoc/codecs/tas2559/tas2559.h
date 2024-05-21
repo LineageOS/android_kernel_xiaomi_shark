@@ -515,7 +515,6 @@ struct tas2559_priv {
 	unsigned int mnErrCode;
 
 	unsigned int mnRestart;
-	bool mbMute;
 #ifdef CONFIG_TAS2559_CODEC
 	struct mutex codec_lock;
 #endif
