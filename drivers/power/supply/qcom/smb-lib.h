@@ -26,6 +26,7 @@ enum print_reason {
 	PR_MISC		= BIT(2),
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
+	PR_INFO         = BIT(5),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"

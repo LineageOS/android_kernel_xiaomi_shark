@@ -465,9 +465,9 @@ static void get_fcc_split(struct pl_data *chip, int total_ua,
 	 * through main charger's BATFET, keep the main charger's FCC
 	 * to the votable result.
 	 */
-	if (chip->pl_batfet_mode == POWER_SUPPLY_PL_STACKED_BATFET)
-		*master_ua = max(0, total_ua);
-	else
+	// if (chip->pl_batfet_mode == POWER_SUPPLY_PL_STACKED_BATFET)
+	// 	*master_ua = max(0, total_ua);
+	// else
 		*master_ua = max(0, total_ua - *slave_ua);
 }
 
@@ -1468,8 +1468,8 @@ static void handle_parallel_in_taper(struct pl_data *chip)
 	 * we disable parallel charger
 	 */
 	if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER) {
-		vote(chip->pl_disable_votable, PL_TAPER_EARLY_BAD_VOTER,
-				true, 0);
+		// vote(chip->pl_disable_votable, PL_TAPER_EARLY_BAD_VOTER,
+		//		true, 0);
 		return;
 	}
 }

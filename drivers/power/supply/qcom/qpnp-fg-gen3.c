@@ -26,6 +26,7 @@
 #include <linux/qpnp/qpnp-misc.h>
 #include "fg-core.h"
 #include "fg-reg.h"
+#include "step-chg-jeita.h"
 
 #define FG_GEN3_DEV_NAME	"qcom,fg-gen3"
 
@@ -1937,12 +1938,11 @@ static int fg_charge_full_update(struct fg_chip *chip)
 		 * If charge_done is still set, wait for recharging or
 		 * discharging to happen.
 		 */
-		if (chip->charge_done)
-			goto out;
-
-		rc = fg_configure_full_soc(chip, bsoc);
-		if (rc < 0)
-			goto out;
+		if (msoc_raw <= recharge_soc) {
+  			rc = fg_configure_full_soc(chip, bsoc);
+  			if (rc < 0)
+  				goto out;
+  		}
 
 		chip->charge_full = false;
 		fg_dbg(chip, FG_STATUS, "msoc_raw = %d bsoc: %d recharge_soc: %d delta_soc: %d\n",
@@ -2140,49 +2140,30 @@ static int fg_adjust_recharge_soc(struct fg_chip *chip)
 	 * the recharge SOC threshold based on the monotonic SOC at which
 	 * the charge termination had happened.
 	 */
-	if (is_input_present(chip)) {
-		if (chip->charge_done) {
-			if (!chip->recharge_soc_adjusted) {
-				/* Get raw monotonic SOC for calculation */
-				rc = fg_get_msoc(chip, &msoc);
-				if (rc < 0) {
-					pr_err("Error in getting msoc, rc=%d\n",
-						rc);
-					return rc;
-				}
+	if (is_input_present(chip)
+			&& !chip->recharge_soc_adjusted
+		 	&& chip->charge_done) {
+		if (chip->health == POWER_SUPPLY_HEALTH_GOOD)
+  			return 0;
 
-				/* Adjust the recharge_soc threshold */
-				new_recharge_soc = msoc - (FULL_CAPACITY -
-								recharge_soc);
-				chip->recharge_soc_adjusted = true;
-			} else {
-				/* adjusted already, do nothing */
-				if (chip->health != POWER_SUPPLY_HEALTH_GOOD)
-					return 0;
+		/* Get raw monotonic SOC for calculation */
+  		rc = fg_get_msoc(chip, &msoc);
+  		if (rc < 0) {
+  			pr_err("Error in getting msoc, rc=%d\n", rc);
+  			return rc;
+ 		}
 
-				/*
-				 * Device is out of JEITA so restore the
-				 * default value
-				 */
-				new_recharge_soc = recharge_soc;
-				chip->recharge_soc_adjusted = false;
-			}
-		} else {
-			if (!chip->recharge_soc_adjusted)
-				return 0;
-
-			if (chip->health != POWER_SUPPLY_HEALTH_GOOD)
-				return 0;
-
-			/* Restore the default value */
-			new_recharge_soc = recharge_soc;
-			chip->recharge_soc_adjusted = false;
-		}
-	} else {
-		/* Restore the default value */
-		new_recharge_soc = recharge_soc;
-		chip->recharge_soc_adjusted = false;
-	}
+		/* Adjust the recharge_soc threshold */
+  		new_recharge_soc = msoc - (FULL_CAPACITY - recharge_soc);
+  			chip->recharge_soc_adjusted = true;
+  	} else if ((!is_input_present(chip) || chip->health == POWER_SUPPLY_HEALTH_GOOD)
+  						&& chip->recharge_soc_adjusted) {
+ 		/* Restore the default value */
+  		new_recharge_soc = recharge_soc;
+  		chip->recharge_soc_adjusted = false;
+  	} else {
+  		return 0;
+  	}
 
 	rc = fg_set_recharge_soc(chip, new_recharge_soc);
 	if (rc < 0) {
@@ -3255,6 +3236,8 @@ static void profile_load_work(struct work_struct *work)
 			chip->batt_id_ohms / 1000, rc);
 		goto out;
 	}
+
+	qcom_step_chg_init(chip->dev, 0, 1);
 
 	if (!chip->profile_available)
 		goto out;

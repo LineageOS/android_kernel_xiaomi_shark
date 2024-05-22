@@ -1736,6 +1736,14 @@ static int smb2_init_hw(struct smb2 *chip)
 	vote(chg->hvdcp_enable_votable, MICRO_USB_VOTER,
 		(chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB), 0);
 
+	/*limit qc2.0 volt-adjust to 9v and qc3.0 to 6.6v*/
+	smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					PULSE_COUNT_QC2P0_12V | PULSE_COUNT_QC2P0_9V,
+					PULSE_COUNT_QC2P0_9V);
+	smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					PULSE_COUNT_QC3P0_MASK,
+					0x7);
+
 	/* configure VCONN for software control */
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				 VCONN_EN_SRC_BIT | VCONN_EN_VALUE_BIT,
@@ -2575,6 +2583,8 @@ static int smb2_probe(struct platform_device *pdev)
 		goto cleanup;
 	}
 	batt_charge_type = val.intval;
+
+	device_init_wakeup(chg->dev, true);
 
 	pr_info("QPNP SMB2 probed successfully usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,
