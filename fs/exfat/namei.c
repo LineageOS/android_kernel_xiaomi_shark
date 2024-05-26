@@ -405,6 +405,7 @@ static int exfat_find_empty_entry(struct inode *inode,
 			ei->start_clu = clu.dir;
 			p_dir->dir = clu.dir;
 		}
+
 		/* append to the FAT chain */
 		if (clu.flags != p_dir->flags) {
 			/* no-fat-chain bit is disabled,
@@ -652,6 +653,7 @@ static int exfat_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 #else
 	inode->i_version++;
 #endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 	EXFAT_I(inode)->i_crtime = simple_inode_init_ts(inode);
 	exfat_truncate_inode_atime(inode);
