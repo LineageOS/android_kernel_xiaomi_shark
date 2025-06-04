@@ -46,57 +46,42 @@
 				   	   linux,name = "red";
 					   qcom,default-state = "off";
 					   linux,default-trigger = "none";
-					   qcom,start-idx = <0>;
-					   qcom,idx-len = <48>;
-					   qcom,turn-off-delay-ms = <500>;
-					   qcom,duty-pcts =
-						   [00 00 01 02 03 04 05 06 07 08 09 08 07 06 05 04 03 02 01 00 00 00 00 00
-						   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00];
+					   qcom,start-idx = <1>;
+					   qcom,idx-len = <11>;
+					   qcom,duty-pcts = [00 00 01 02 03 04 05 06 07 08 09];
 					   qcom,use-blink;
-					   qcom,lut-flags = <3>;
-					   qcom,pause-lo = <0>;
-					   qcom,pause-hi = <0>;
+					   qcom,lut-flags = <0x1f>;
+					   qcom,pause-lo = <2000>;
+					   qcom,pause-hi = <1000>;
 					   qcom,ramp-step-ms = <100>;
-					   qcom,pwm-us = <1000>;
-					   qcom,max-current = <12>;
 				   };
 
 				   qcom,rgb_1 {
 				   	   linux,name = "green";
 					   qcom,default-state = "off";
 					   linux,default-trigger = "none";
-					   qcom,start-idx = <0>;
-					   qcom,idx-len = <48>;
-					   qcom,turn-off-delay-ms = <500>;
-					   qcom,duty-pcts =
-						   [00 00 01 02 03 04 05 06 07 08 09 08 07 06 05 04 03 02 01 00 00 00 00 00
-						   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00];
+					   qcom,start-idx = <1>;
+					   qcom,idx-len = <11>;
+					   qcom,duty-pcts = [00 00 01 02 03 04 05 06 07 08 09];
 					   qcom,use-blink;
-					   qcom,lut-flags = <3>;
-					   qcom,pause-lo = <0>;
-					   qcom,pause-hi = <0>;
+					   qcom,lut-flags = <0x1f>;
+					   qcom,pause-lo = <2000>;
+					   qcom,pause-hi = <1000>;
 					   qcom,ramp-step-ms = <100>;
-					   qcom,pwm-us = <1000>;
-					   qcom,max-current = <12>;
 				   };
 
 				   qcom,rgb_2 {
 				   	   linux,name = "blue";
 					   qcom,default-state = "off";
 					   linux,default-trigger = "none";
-					   qcom,start-idx = <0>;
-					   qcom,idx-len = <48>;
-					   qcom,turn-off-delay-ms = <500>;
-					   qcom,duty-pcts =
-						   [00 00 01 02 03 04 05 06 07 08 09 08 07 06 05 04 03 02 01 00 00 00 00 00
-						   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00];
+					   qcom,start-idx = <1>;
+					   qcom,idx-len = <11>;
+					   qcom,duty-pcts = [00 00 01 02 03 04 05 06 07 08 09];
 					   qcom,use-blink;
-					   qcom,lut-flags = <3>;
-					   qcom,pause-lo = <0>;
-					   qcom,pause-hi = <0>;
+					   qcom,lut-flags = <0x1f>;
+					   qcom,pause-lo = <2000>;
+					   qcom,pause-hi = <1000>;
 					   qcom,ramp-step-ms = <100>;
-					   qcom,pwm-us = <1000>;
-					   qcom,max-current = <12>;
 				   };
 			   };
 		   };
